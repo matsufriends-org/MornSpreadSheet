@@ -44,8 +44,8 @@ async UniTask HogeAsync()
     - https://docs.google.com/spreadsheets/d/スプレッドシートのID
 - シート名をメモ
     - Sheet1
-- `MornSpreadSheetLoader` インスタンスを作成し、シートのIDとシート名を与える
-- `LoadAsync` 関数を呼び出す
+- `MornSpreadSheetLoader` インスタンスを作成し、シートのIDを与える
+- `LoadSheetAsync` 関数をシート名を引数に与えて実行する
 - `GetColumn`、`GetRow`、`GetCell` 関数で列/行/セルを取得する
 - `AsInt`、`AsFloat`、`AsBool`、`AsString` 関数でセルの値を取得する
 
