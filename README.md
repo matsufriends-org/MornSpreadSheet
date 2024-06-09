@@ -17,7 +17,7 @@ async UniTask HogeAsync()
     // 1行目を配列で取得
     var row = sheet.GetRow(1);
     
-    // 1行1列目を取得
+    // 1行1列目のセルを取得
     var cell = sheet.GetCell(1, 1);
     
     cell.AsString(); // 文字列として取得
