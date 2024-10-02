@@ -2,9 +2,9 @@
 {
     public sealed class MornSpreadSheet
     {
-        private readonly MornSpreadSheetCell[,] cells;
-        public readonly int rowCount;
-        public readonly int colCount;
+        private readonly MornSpreadSheetCell[,] _cells;
+        public readonly int RowCount;
+        public readonly int ColCount;
 
         public MornSpreadSheet(string data)
         {
@@ -19,64 +19,64 @@
              * "," や "\n" でsplitを行う
              */
             var rows = data.Split("\"\n\"");
-            rowCount = rows.Length;
-            if (rowCount == 0)
+            RowCount = rows.Length;
+            if (RowCount == 0)
             {
                 MornSpreadSheetLogger.LogError("No data found");
                 return;
             }
 
-            colCount = rows[0].Split("\",\"").Length;
-            if (colCount == 0)
+            ColCount = rows[0].Split("\",\"").Length;
+            if (ColCount == 0)
             {
                 MornSpreadSheetLogger.LogError("No data found");
                 return;
             }
 
-            cells = new MornSpreadSheetCell[rowCount, colCount];
-            for (var i = 0; i < rowCount; i++)
+            _cells = new MornSpreadSheetCell[RowCount, ColCount];
+            for (var i = 0; i < RowCount; i++)
             {
                 var cols = rows[i].Split("\",\"");
-                for (var j = 0; j < colCount; j++)
+                for (var j = 0; j < ColCount; j++)
                 {
-                    cells[i, j] = new MornSpreadSheetCell(cols[j]);
+                    _cells[i, j] = new MornSpreadSheetCell(cols[j]);
                 }
             }
 
             // 先頭のダブルクォーテーションを削除
-            var topValue = cells[0, 0].AsString();
-            cells[0, 0] = new MornSpreadSheetCell(topValue.Substring(1));
+            var topValue = _cells[0, 0].AsString();
+            _cells[0, 0] = new MornSpreadSheetCell(topValue.Substring(1));
 
             // 末尾のダブルクォーテーションを削除
-            var bottomValue = cells[rowCount - 1, colCount - 1].AsString();
-            cells[rowCount - 1, colCount - 1] = new MornSpreadSheetCell(bottomValue.Substring(0, bottomValue.Length - 1));
+            var bottomValue = _cells[RowCount - 1, ColCount - 1].AsString();
+            _cells[RowCount - 1, ColCount - 1] = new MornSpreadSheetCell(bottomValue.Substring(0, bottomValue.Length - 1));
         }
 
         /// <summary> row と col は1始まり </summary>
         public MornSpreadSheetCell Get(int row, int col)
         {
-            if (row < 1 || row > rowCount || col < 1 || col > colCount)
+            if (row < 1 || row > RowCount || col < 1 || col > ColCount)
             {
                 MornSpreadSheetLogger.LogError($"Index out of range row: {row}, col: {col}");
                 return null;
             }
 
-            return cells[row - 1, col - 1];
+            return _cells[row - 1, col - 1];
         }
 
         /// <summary> row は1始まり </summary>
         public MornSpreadSheetCell[] GetRow(int row)
         {
-            if (row < 1 || row > rowCount)
+            if (row < 1 || row > RowCount)
             {
                 MornSpreadSheetLogger.LogError($"Index out of range row: {row}");
                 return null;
             }
 
-            var rowCells = new MornSpreadSheetCell[colCount];
-            for (var i = 0; i < colCount; i++)
+            var rowCells = new MornSpreadSheetCell[ColCount];
+            for (var i = 0; i < ColCount; i++)
             {
-                rowCells[i] = cells[row - 1, i];
+                rowCells[i] = _cells[row - 1, i];
             }
 
             return rowCells;
@@ -85,16 +85,16 @@
         /// <summary> col は1始まり </summary>
         public MornSpreadSheetCell[] GetCol(int col)
         {
-            if (col < 1 || col > colCount)
+            if (col < 1 || col > ColCount)
             {
                 MornSpreadSheetLogger.LogError($"Index out of range col: {col}");
                 return null;
             }
 
-            var colCells = new MornSpreadSheetCell[rowCount];
-            for (var i = 0; i < rowCount; i++)
+            var colCells = new MornSpreadSheetCell[RowCount];
+            for (var i = 0; i < RowCount; i++)
             {
-                colCells[i] = cells[i, col - 1];
+                colCells[i] = _cells[i, col - 1];
             }
 
             return colCells;

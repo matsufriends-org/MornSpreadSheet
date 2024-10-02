@@ -2,31 +2,31 @@
 {
     public sealed class MornSpreadSheetCell
     {
-        private readonly string value;
+        private readonly string _value;
 
         public MornSpreadSheetCell(string value)
         {
-            this.value = value;
+            _value = value;
         }
 
         public string AsString()
         {
-            return value;
+            return _value;
         }
 
         public int AsInt()
         {
-            return int.Parse(value);
+            return int.Parse(_value);
         }
 
         public float AsFloat()
         {
-            return float.Parse(value);
+            return float.Parse(_value);
         }
 
         public bool AsBool()
         {
-            return bool.Parse(value);
+            return bool.Parse(_value);
         }
     }
 }

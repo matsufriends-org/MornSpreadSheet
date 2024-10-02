@@ -6,16 +6,16 @@ namespace MornSpreadSheet
 {
     public sealed class MornSpreadSheetLoader
     {
-        private readonly string sheetId;
+        private readonly string _sheetId;
 
         public MornSpreadSheetLoader(string sheetId)
         {
-            this.sheetId = sheetId;
+            _sheetId = sheetId;
         }
 
         public async UniTask<MornSpreadSheet> LoadSheetAsync(string sheetName, CancellationToken cancellationToken = default)
         {
-            var url = $"https://docs.google.com/spreadsheets/d/{sheetId}/gviz/tq?tqx=out:csv&sheet={sheetName}";
+            var url = $"https://docs.google.com/spreadsheets/d/{_sheetId}/gviz/tq?tqx=out:csv&sheet={sheetName}";
             using var req = UnityWebRequest.Get(url);
             await req.SendWebRequest().WithCancellation(cancellationToken);
             if (req.result == UnityWebRequest.Result.Success)
