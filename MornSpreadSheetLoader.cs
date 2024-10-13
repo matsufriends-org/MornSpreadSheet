@@ -1,5 +1,6 @@
 ﻿using System.Threading;
 using Cysharp.Threading.Tasks;
+using UnityEngine;
 using UnityEngine.Networking;
 
 namespace MornSpreadSheet
@@ -11,6 +12,12 @@ namespace MornSpreadSheet
         public MornSpreadSheetLoader(string sheetId)
         {
             _sheetId = sheetId;
+        }
+
+        public void Open(string sheetName)
+        {
+            var url = $"https://docs.google.com/spreadsheets/d/{_sheetId}/edit#gid={sheetName}";
+            Application.OpenURL(url);
         }
 
         public async UniTask<MornSpreadSheet> LoadSheetAsync(string sheetName, CancellationToken cancellationToken = default)
