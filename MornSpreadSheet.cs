@@ -1,4 +1,6 @@
-﻿namespace MornSpreadSheet
+﻿using System.Collections.Generic;
+
+namespace MornSpreadSheet
 {
     public sealed class MornSpreadSheet
     {
@@ -50,6 +52,55 @@
             // 末尾のダブルクォーテーションを削除
             var bottomValue = _cells[RowCount - 1, ColCount - 1].AsString();
             _cells[RowCount - 1, ColCount - 1] = new MornSpreadSheetCell(bottomValue.Substring(0, bottomValue.Length - 1));
+
+            // 1行目が#で始まる場合はコメント行として無視する
+            var ignoreColHashSet = new HashSet<int>();
+            for (var i = 0; i < ColCount; i++)
+            {
+                if (_cells[0, i].AsString().StartsWith("#"))
+                {
+                    ignoreColHashSet.Add(i);
+                }
+            }
+
+            // 1列目が#で始まる場合はコメント列として無視する
+            var ignoreRowHashSet = new HashSet<int>();
+            for (var i = 0; i < RowCount; i++)
+            {
+                if (_cells[i, 0].AsString().StartsWith("#"))
+                {
+                    ignoreRowHashSet.Add(i);
+                }
+            }
+
+            // 無視する行と列を除外する
+            var newCells = new MornSpreadSheetCell[RowCount - ignoreRowHashSet.Count, ColCount - ignoreColHashSet.Count];
+            var newRow = 0;
+            for (var i = 0; i < RowCount; i++)
+            {
+                if (ignoreRowHashSet.Contains(i))
+                {
+                    continue;
+                }
+
+                var newCol = 0;
+                for (var j = 0; j < ColCount; j++)
+                {
+                    if (ignoreColHashSet.Contains(j))
+                    {
+                        continue;
+                    }
+
+                    newCells[newRow, newCol] = _cells[i, j];
+                    newCol++;
+                }
+
+                newRow++;
+            }
+
+            _cells = newCells;
+            RowCount = _cells.GetLength(0);
+            ColCount = _cells.GetLength(1);
         }
 
         /// <summary> row と col は1始まり </summary>
