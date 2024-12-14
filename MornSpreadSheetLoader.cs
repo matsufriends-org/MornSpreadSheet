@@ -23,6 +23,11 @@ namespace MornSpreadSheet
         public async UniTask<MornSpreadSheet> LoadSheetAsync(string sheetName, CancellationToken cancellationToken = default)
         {
             var url = $"https://docs.google.com/spreadsheets/d/{_sheetId}/gviz/tq?tqx=out:csv&sheet={sheetName}";
+            return await LoadSheetFromUrlAsync(url, cancellationToken);
+        }
+
+        public async UniTask<MornSpreadSheet> LoadSheetFromUrlAsync(string url, CancellationToken cancellationToken = default)
+        {
             using var req = UnityWebRequest.Get(url);
             await req.SendWebRequest().WithCancellation(cancellationToken);
             if (req.result == UnityWebRequest.Result.Success)
