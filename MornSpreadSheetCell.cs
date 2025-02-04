@@ -6,7 +6,7 @@
 
         public MornSpreadSheetCell(string value)
         {
-            _value = value;
+            _value = value.Trim();
         }
 
         public string AsString()

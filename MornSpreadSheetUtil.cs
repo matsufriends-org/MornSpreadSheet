@@ -9,13 +9,14 @@ namespace MornSpreadSheet
 #else
         private const bool SHOW_LOG = true;
 #endif
-        private const string PREFIX = "[MornLocalize] ";
+        private static string Prefix => $"[<color=green>{nameof(MornSpreadSheet)}</color>] ";
+
 
         public static void Log(string message)
         {
             if (SHOW_LOG)
             {
-                Debug.Log(PREFIX + message);
+                Debug.Log(Prefix + message);
             }
         }
 
@@ -23,7 +24,7 @@ namespace MornSpreadSheet
         {
             if (SHOW_LOG)
             {
-                Debug.LogError(PREFIX + message);
+                Debug.LogError(Prefix + message);
             }
         }
 
@@ -31,7 +32,7 @@ namespace MornSpreadSheet
         {
             if (SHOW_LOG)
             {
-                Debug.LogWarning(PREFIX + message);
+                Debug.LogWarning(Prefix + message);
             }
         }
     }
