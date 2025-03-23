@@ -2,7 +2,10 @@
     "name": "MornSpreadSheet",
     "rootNamespace": "MornSpreadSheet",
     "references": [
-        "GUID:f51ebe6a0ceec4240a699833d6309b23"
+        "GUID:f51ebe6a0ceec4240a699833d6309b23",
+        "GUID:dadc2fee866e04157b6aa9c8ff475e67",
+        "GUID:520891f70526d454fa74c098f96aaedd",
+        "GUID:9fb3b15b1474476cbe64c6bd63468fb6"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

@@ -1,14 +1,18 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using UnityEngine;
 
 namespace MornSpreadSheet
 {
+    [Serializable]
     public sealed class MornSpreadSheet
     {
-        private readonly MornSpreadSheetCell[,] _cells;
-        public readonly int RowCount;
-        public readonly int ColCount;
+        [SerializeField] private string _sheetName;
+        [SerializeField] private List<MornSpreadSheetRow> _rows;
+        public int RowCount => _rows.Count;
+        public int ColCount => _rows.Count > 0 ? _rows[0].CellCount : 0;
 
-        public MornSpreadSheet(string data)
+        public static bool TryConvert(string sheetName, string data, out MornSpreadSheet result)
         {
             /*
              * Memo
@@ -21,43 +25,64 @@ namespace MornSpreadSheet
              * "," や "\n" でsplitを行う
              */
             var rows = data.Split("\"\n\"");
-            RowCount = rows.Length;
-            if (RowCount == 0)
+            var rowCount = rows.Length;
+            if (rowCount == 0)
             {
-                MornSpreadSheetLogger.LogError("No data found");
-                return;
+                MornSpreadSheetGlobal.LogError("データがありません。");
+                result = null;
+                return false;
             }
 
-            ColCount = rows[0].Split("\",\"").Length;
-            if (ColCount == 0)
+            var colCount = rows[0].Split("\",\"").Length;
+            if (colCount == 0)
             {
-                MornSpreadSheetLogger.LogError("No data found");
-                return;
+                MornSpreadSheetGlobal.LogError("データがありません。");
+                result = null;
+                return false;
             }
 
-            _cells = new MornSpreadSheetCell[RowCount, ColCount];
-            for (var i = 0; i < RowCount; i++)
+            var cells = new MornSpreadSheetCell[rowCount, colCount];
+            for (var i = 0; i < rowCount; i++)
             {
                 var cols = rows[i].Split("\",\"");
-                for (var j = 0; j < ColCount; j++)
+                for (var j = 0; j < colCount; j++)
                 {
-                    _cells[i, j] = new MornSpreadSheetCell(cols[j]);
+                    cells[i, j] = new MornSpreadSheetCell(cols[j]);
                 }
             }
 
             // 先頭のダブルクォーテーションを削除
-            var topValue = _cells[0, 0].AsString();
-            _cells[0, 0] = new MornSpreadSheetCell(topValue.Substring(1));
+            var topValue = cells[0, 0].AsString();
+            cells[0, 0] = new MornSpreadSheetCell(topValue.Substring(1));
 
             // 末尾のダブルクォーテーションを削除
-            var bottomValue = _cells[RowCount - 1, ColCount - 1].AsString();
-            _cells[RowCount - 1, ColCount - 1] = new MornSpreadSheetCell(bottomValue.Substring(0, bottomValue.Length - 1));
+            var bottomValue = cells[rowCount - 1, colCount - 1].AsString();
+            cells[rowCount - 1, colCount - 1] =
+                new MornSpreadSheetCell(bottomValue.Substring(0, bottomValue.Length - 1));
 
-            // 1行目が#で始まる場合はコメント行として無視する
-            var ignoreColHashSet = new HashSet<int>();
-            for (var i = 0; i < ColCount; i++)
+            // 1行目の#以降は無視する
+            for (var i = 0; i < colCount; i++)
             {
-                if (_cells[0, i].AsString().StartsWith("#"))
+                var value = cells[0, i].AsString();
+                var sharpIndex = value.IndexOf("#", StringComparison.Ordinal);
+                if (sharpIndex > 0)
+                {
+                    var clampedValue = value[..sharpIndex];
+                    clampedValue = clampedValue.Trim();
+                    cells[0, i] = new MornSpreadSheetCell(clampedValue);
+                }
+            }
+            
+            // 1行目が#で始まる/空欄の場合はコメント行として無視する
+            var ignoreColHashSet = new HashSet<int>();
+            for (var i = 0; i < colCount; i++)
+            {
+                if (cells[0, i].AsString().StartsWith("#"))
+                {
+                    ignoreColHashSet.Add(i);
+                }
+                
+                if (string.IsNullOrEmpty(cells[0, i].AsString()))
                 {
                     ignoreColHashSet.Add(i);
                 }
@@ -65,18 +90,19 @@ namespace MornSpreadSheet
 
             // 1列目が#で始まる場合はコメント列として無視する
             var ignoreRowHashSet = new HashSet<int>();
-            for (var i = 0; i < RowCount; i++)
+            for (var i = 0; i < rowCount; i++)
             {
-                if (_cells[i, 0].AsString().StartsWith("#"))
+                if (cells[i, 0].AsString().StartsWith("#"))
                 {
                     ignoreRowHashSet.Add(i);
                 }
             }
 
             // 無視する行と列を除外する
-            var newCells = new MornSpreadSheetCell[RowCount - ignoreRowHashSet.Count, ColCount - ignoreColHashSet.Count];
+            var newCells =
+                new MornSpreadSheetCell[rowCount - ignoreRowHashSet.Count, colCount - ignoreColHashSet.Count];
             var newRow = 0;
-            for (var i = 0; i < RowCount; i++)
+            for (var i = 0; i < rowCount; i++)
             {
                 if (ignoreRowHashSet.Contains(i))
                 {
@@ -84,71 +110,80 @@ namespace MornSpreadSheet
                 }
 
                 var newCol = 0;
-                for (var j = 0; j < ColCount; j++)
+                for (var j = 0; j < colCount; j++)
                 {
                     if (ignoreColHashSet.Contains(j))
                     {
                         continue;
                     }
 
-                    newCells[newRow, newCol] = _cells[i, j];
+                    newCells[newRow, newCol] = cells[i, j];
                     newCol++;
                 }
 
                 newRow++;
             }
 
-            _cells = newCells;
-            RowCount = _cells.GetLength(0);
-            ColCount = _cells.GetLength(1);
+            cells = newCells;
+            rowCount = cells.GetLength(0);
+            colCount = cells.GetLength(1);
+            result = new MornSpreadSheet
+            {
+                _sheetName = sheetName,
+                _rows = new List<MornSpreadSheetRow>(rowCount),
+            };
+            for (var i = 0; i < rowCount; i++)
+            {
+                var row = new MornSpreadSheetRow();
+                for (var j = 0; j < colCount; j++)
+                {
+                    row.AddCell(cells[i, j]);
+                }
+
+                result._rows.Add(row);
+            }
+
+            return true;
+        }
+
+        public void Open(string sheetId)
+        {
+            var url = $"https://docs.google.com/spreadsheets/d/{sheetId}/edit#gid={_sheetName}";
+            Application.OpenURL(url);
         }
 
         /// <summary> row と col は1始まり </summary>
-        public MornSpreadSheetCell Get(int row, int col)
+        public MornSpreadSheetCell Get(int rowIdx, int colIdx)
         {
-            if (row < 1 || row > RowCount || col < 1 || col > ColCount)
+            if (rowIdx < 1 || rowIdx > _rows.Count)
             {
-                MornSpreadSheetLogger.LogError($"Index out of range row: {row}, col: {col}");
-                return null;
+                MornSpreadSheetGlobal.LogError($"範囲外です。{rowIdx}/{_rows.Count}行");
+                return default(MornSpreadSheetCell);
             }
 
-            return _cells[row - 1, col - 1];
+            var row = _rows[rowIdx - 1];
+            return row.GetCell(colIdx);
         }
 
         /// <summary> row は1始まり </summary>
-        public MornSpreadSheetCell[] GetRow(int row)
+        public MornSpreadSheetRow GetRow(int rowIdx)
         {
-            if (row < 1 || row > RowCount)
+            if (rowIdx < 1 || rowIdx > _rows.Count)
             {
-                MornSpreadSheetLogger.LogError($"Index out of range row: {row}");
+                MornSpreadSheetGlobal.LogError($"範囲外です。{rowIdx}/{_rows.Count}行");
                 return null;
             }
 
-            var rowCells = new MornSpreadSheetCell[ColCount];
-            for (var i = 0; i < ColCount; i++)
-            {
-                rowCells[i] = _cells[row - 1, i];
-            }
-
-            return rowCells;
+            return _rows[rowIdx - 1];
         }
 
-        /// <summary> col は1始まり </summary>
-        public MornSpreadSheetCell[] GetCol(int col)
+        /// <summary> row は1始まり </summary>
+        public IEnumerable<MornSpreadSheetRow> GetRows()
         {
-            if (col < 1 || col > ColCount)
+            foreach (var row in _rows)
             {
-                MornSpreadSheetLogger.LogError($"Index out of range col: {col}");
-                return null;
+                yield return row;
             }
-
-            var colCells = new MornSpreadSheetCell[RowCount];
-            for (var i = 0; i < RowCount; i++)
-            {
-                colCells[i] = _cells[i, col - 1];
-            }
-
-            return colCells;
         }
     }
 }

@@ -1,8 +1,12 @@
-﻿namespace MornSpreadSheet
+﻿using System;
+using UnityEngine;
+
+namespace MornSpreadSheet
 {
-    public sealed class MornSpreadSheetCell
+    [Serializable]
+    public struct MornSpreadSheetCell
     {
-        private readonly string _value;
+        [SerializeField] private string _value;
 
         public MornSpreadSheetCell(string value)
         {

@@ -1,39 +1,75 @@
-﻿using UnityEngine;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using Cysharp.Threading.Tasks;
+using UnityEngine;
+using UnityEngine.Networking;
 
 namespace MornSpreadSheet
 {
-    internal static class MornSpreadSheetLogger
+    public static class MornSpreadSheetUtil
     {
-#if DISABLE_MORN_SPREAD_SHEET_LOG
-        private const bool SHOW_LOG = false;
-#else
-        private const bool SHOW_LOG = true;
-#endif
-        private static string Prefix => $"[<color=green>{nameof(MornSpreadSheet)}</color>] ";
-
-
-        public static void Log(string message)
+        [Serializable]
+        private class SheetNameList
         {
-            if (SHOW_LOG)
-            {
-                Debug.Log(Prefix + message);
-            }
+            public string[] Names;
         }
 
-        public static void LogError(string message)
+        public async static UniTask<IEnumerable<string>> LoadSheetNamesAsync(string getSheetNameApiUrl,
+            CancellationToken ct = default)
         {
-            if (SHOW_LOG)
+            var result = new List<string>();
+            if (string.IsNullOrEmpty(getSheetNameApiUrl))
             {
-                Debug.LogError(Prefix + message);
+                MornSpreadSheetGlobal.LogWarning("シート名を取得するURLが設定されていません");
+                return result;
             }
+
+            using var request = UnityWebRequest.Get(getSheetNameApiUrl);
+            await request.SendWebRequest().WithCancellation(ct);
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                var json = request.downloadHandler.text;
+                var sheetNames = JsonUtility.FromJson<SheetNameList>("{\"Names\":" + json + "}").Names;
+                result.AddRange(sheetNames.Where(sheetName => !sheetName.StartsWith("#")));
+            }
+            else
+            {
+                MornSpreadSheetGlobal.LogError($"シート名の取得失敗：{request.error}");
+            }
+
+            return result;
         }
 
-        public static void LogWarning(string message)
+        public async static UniTask<MornSpreadSheet> LoadSheetAsync(string sheetId, string sheetName,
+            CancellationToken cancellationToken = default)
         {
-            if (SHOW_LOG)
+            var url = $"https://docs.google.com/spreadsheets/d/{sheetId}/gviz/tq?tqx=out:csv&sheet={sheetName}";
+            return await LoadSheetFromUrlAsync(sheetName, url, cancellationToken);
+        }
+
+        private async static UniTask<MornSpreadSheet> LoadSheetFromUrlAsync(string sheetName, string url,
+            CancellationToken cancellationToken = default)
+        {
+            MornSpreadSheetGlobal.Log($"ダウンロード開始:{url}");
+            using var req = UnityWebRequest.Get(url);
+            await req.SendWebRequest().WithCancellation(cancellationToken);
+            if (req.result == UnityWebRequest.Result.Success)
             {
-                Debug.LogWarning(Prefix + message);
+                var resultText = req.downloadHandler.text;
+                MornSpreadSheetGlobal.Log($"ダウンロード成功:\n{resultText}");
+                if (MornSpreadSheet.TryConvert(sheetName, resultText, out var result))
+                {
+                    return result;
+                }
+
+                MornSpreadSheetGlobal.LogError("変換失敗");
+                return null;
             }
+
+            MornSpreadSheetGlobal.LogError($"ダウンロード失敗:{req.error}");
+            return null;
         }
     }
 }
