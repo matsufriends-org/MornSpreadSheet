@@ -38,5 +38,10 @@ namespace MornSpreadSheet
         {
             return _cells;
         }
+
+        public string AsString()
+        {
+            return string.Join(",", _cells.ConvertAll(cell => cell.AsString()));
+        }
     }
 }

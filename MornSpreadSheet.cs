@@ -9,6 +9,7 @@ namespace MornSpreadSheet
     {
         [SerializeField] private string _sheetName;
         [SerializeField] private List<MornSpreadSheetRow> _rows;
+        public string SheetName => _sheetName;
         public int RowCount => _rows.Count;
         public int ColCount => _rows.Count > 0 ? _rows[0].CellCount : 0;
 
@@ -93,6 +94,30 @@ namespace MornSpreadSheet
             for (var i = 0; i < rowCount; i++)
             {
                 if (cells[i, 0].AsString().StartsWith("#"))
+                {
+                    ignoreRowHashSet.Add(i);
+                }
+            }
+            
+            // 全ての列が空白の場合は無視する
+            for (var i = 0; i < rowCount; i++)
+            {
+                var allEmpty = true;
+                for (var j = 0; j < colCount; j++)
+                {
+                    if (ignoreColHashSet.Contains(j))
+                    {
+                        continue;
+                    }
+                    
+                    if (!string.IsNullOrWhiteSpace(cells[i, j].AsString()))
+                    {
+                        allEmpty = false;
+                        break;
+                    }
+                }
+
+                if (allEmpty)
                 {
                     ignoreRowHashSet.Add(i);
                 }
