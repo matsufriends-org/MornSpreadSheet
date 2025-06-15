@@ -10,7 +10,9 @@ namespace MornSpreadSheet
 
         public MornSpreadSheetCell(string value)
         {
-            _value = value.Trim();
+            // ParseCsvメソッドで既にエスケープ処理済みなので、そのまま保存
+            // Trimは維持（前後の空白を削除）
+            _value = value?.Trim() ?? string.Empty;
         }
 
         public string AsString()

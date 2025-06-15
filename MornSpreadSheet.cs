@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text;
 using UnityEngine;
 
 namespace MornSpreadSheet
@@ -16,17 +17,15 @@ namespace MornSpreadSheet
         public static bool TryConvert(string sheetName, string data, out MornSpreadSheet result)
         {
             /*
-             * Memo
-             * 1セルは "~" と記述される
-             * 1行は "~","~","~" と記述される
-             * 次の行がある場合は、末尾に"\n"が付与される
-             *
-             * セルの中に " や \n が含まれる場合もあるため
-             * 隣接するセルのダブルクォーテーションを含む
-             * "," や "\n" でsplitを行う
+             * RFC 4180準拠のCSV解析
+             * - フィールドはカンマで区切られる
+             * - フィールドはダブルクォーテーションで囲まれることがある
+             * - フィールド内のダブルクォーテーションは""でエスケープされる
+             * - フィールド内に改行、カンマ、ダブルクォーテーションが含まれる場合は、
+             *   フィールド全体をダブルクォーテーションで囲む必要がある
              */
-            var rows = data.Split("\"\n\"");
-            var rowCount = rows.Length;
+            var parsedRows = ParseCsv(data);
+            var rowCount = parsedRows.Count;
             if (rowCount == 0)
             {
                 MornSpreadSheetGlobal.LogError("データがありません。");
@@ -34,32 +33,22 @@ namespace MornSpreadSheet
                 return false;
             }
 
-            var colCount = rows[0].Split("\",\"").Length;
+            var colCount = parsedRows[0].Count;
             if (colCount == 0)
             {
                 MornSpreadSheetGlobal.LogError("データがありません。");
                 result = null;
                 return false;
             }
-
+            
             var cells = new MornSpreadSheetCell[rowCount, colCount];
             for (var i = 0; i < rowCount; i++)
             {
-                var cols = rows[i].Split("\",\"");
                 for (var j = 0; j < colCount; j++)
                 {
-                    cells[i, j] = new MornSpreadSheetCell(cols[j]);
+                    cells[i, j] = new MornSpreadSheetCell(parsedRows[i][j]);
                 }
             }
-
-            // 先頭のダブルクォーテーションを削除
-            var topValue = cells[0, 0].AsString();
-            cells[0, 0] = new MornSpreadSheetCell(topValue.Substring(1));
-
-            // 末尾のダブルクォーテーションを削除
-            var bottomValue = cells[rowCount - 1, colCount - 1].AsString();
-            cells[rowCount - 1, colCount - 1] =
-                new MornSpreadSheetCell(bottomValue.Substring(0, bottomValue.Length - 1));
 
             // 1行目の#以降は無視する
             for (var i = 0; i < colCount; i++)
@@ -169,6 +158,117 @@ namespace MornSpreadSheet
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// RFC 4180準拠のCSV解析
+        /// </summary>
+        private static List<List<string>> ParseCsv(string csvData)
+        {
+            var rows = new List<List<string>>();
+            var currentRow = new List<string>();
+            var currentField = new StringBuilder();
+            var inQuotes = false;
+            var i = 0;
+
+            while (i < csvData.Length)
+            {
+                var c = csvData[i];
+
+                if (inQuotes)
+                {
+                    if (c == '"')
+                    {
+                        // 次の文字も確認
+                        if (i + 1 < csvData.Length && csvData[i + 1] == '"')
+                        {
+                            // エスケープされたダブルクォーテーション
+                            currentField.Append('"');
+                            i += 2;
+                            continue;
+                        }
+                        else
+                        {
+                            // フィールドの終了
+                            inQuotes = false;
+                            i++;
+                            continue;
+                        }
+                    }
+                    else
+                    {
+                        // クォート内の通常の文字（改行も含む）
+                        currentField.Append(c);
+                        i++;
+                        continue;
+                    }
+                }
+                else
+                {
+                    if (c == '"')
+                    {
+                        // フィールドの開始
+                        inQuotes = true;
+                        i++;
+                        continue;
+                    }
+                    else if (c == ',')
+                    {
+                        // フィールドの終了
+                        currentRow.Add(currentField.ToString());
+                        currentField.Clear();
+                        i++;
+                        continue;
+                    }
+                    else if (c == '\n' || (c == '\r' && i + 1 < csvData.Length && csvData[i + 1] == '\n'))
+                    {
+                        // 行の終了
+                        currentRow.Add(currentField.ToString());
+                        rows.Add(new List<string>(currentRow));
+                        currentRow.Clear();
+                        currentField.Clear();
+                        
+                        if (c == '\r')
+                        {
+                            i += 2; // \r\nをスキップ
+                        }
+                        else
+                        {
+                            i++;
+                        }
+                        continue;
+                    }
+                    else if (c == '\r')
+                    {
+                        // 単独の\r（古いMac形式）
+                        currentRow.Add(currentField.ToString());
+                        rows.Add(new List<string>(currentRow));
+                        currentRow.Clear();
+                        currentField.Clear();
+                        i++;
+                        continue;
+                    }
+                    else
+                    {
+                        // 通常の文字
+                        currentField.Append(c);
+                        i++;
+                        continue;
+                    }
+                }
+            }
+
+            // 最後のフィールドと行を追加
+            if (currentField.Length > 0 || currentRow.Count > 0)
+            {
+                currentRow.Add(currentField.ToString());
+            }
+            if (currentRow.Count > 0)
+            {
+                rows.Add(currentRow);
+            }
+
+            return rows;
         }
 
         public void Open(string sheetId)
