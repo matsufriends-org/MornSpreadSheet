@@ -1,0 +1,119 @@
+﻿function doGet(e) {
+  var action = e.parameter.action;
+
+  if (action == "getSheetNames") {
+    return getSheetNames();
+  }
+  else {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheets = ss.getSheets();
+    var csvContent = '';
+    sheets.forEach(function(sheet) {
+      var data = sheet.getDataRange().getValues();
+      data.forEach(function(row) {
+        // 各要素をダブルクォーテーションで囲む
+        var quotedRow = row.map(function(cell) {
+          return `"${cell}"`;  // 各セルの値をダブルクォーテーションで囲む
+        }).join(",");
+        csvContent += quotedRow + "\n";
+      });
+    });
+    // Content-TypeをCSVとして設定し、レスポンスを返す
+    return ContentService.createTextOutput(csvContent)
+      .setMimeType(ContentService.MimeType.CSV);
+  }
+}
+
+function GET_SHEET_NAME(sheet_no) {
+  var sheets = SpreadsheetApp.getActive().getSheets();
+  
+  // エラーチェック: sheet_no が 1 以上 sheets.length 以下であることを確認
+  if (!sheet_no || sheet_no < 1 || sheet_no > sheets.length) {
+    Logger.log("Error: Invalid sheet number " + sheet_no);
+    return "Invalid sheet number";
+  }
+
+  return sheets[sheet_no - 1].getSheetName();
+}
+
+function GET_SHEET_URL(sheet_no) {
+  let spreadsheetID = SpreadsheetApp.getActiveSpreadsheet().getId();
+  let id = SpreadsheetApp.getActive().getSheets()[sheet_no - 1].getSheetId();
+  let url = "https://docs.google.com/spreadsheets/d/" + spreadsheetID + "/edit#gid=" + id;
+  return url;
+}
+
+function getSheetNames() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheets = ss.getSheets();
+  var sheetNames = sheets.map(sheet => sheet.getName());
+  
+  return ContentService.createTextOutput(JSON.stringify(sheetNames))
+         .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  // Parse the incoming JSON request
+  var requestData;
+  try {
+    requestData = JSON.parse(e.postData.contents);
+  } catch (error) {
+    return ContentService.createTextOutput("Invalid JSON format").setMimeType(ContentService.MimeType.TEXT);
+  }
+
+  // Extract parameters from the request
+  var sheetName = requestData.sheetName;
+  var strings = requestData.strings;
+
+  if (!sheetName || !Array.isArray(strings) || strings.length === 0) {
+    return ContentService.createTextOutput("Missing or invalid parameters").setMimeType(ContentService.MimeType.TEXT);
+  }
+
+  // Open the spreadsheet
+  var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = spreadsheet.getSheetByName(sheetName);
+
+  // If the sheet does not exist, copy #template sheet and rename it
+  if (!sheet) {
+    var templateSheet = spreadsheet.getSheetByName("#template");
+    if (!templateSheet) {
+      return ContentService.createTextOutput("#template sheet not found").setMimeType(ContentService.MimeType.TEXT);
+    }
+    sheet = templateSheet.copyTo(spreadsheet);
+    sheet.setName(sheetName);
+  }
+
+  // Search for keys and update or append rows
+  var data = sheet.getDataRange().getValues();
+  var lastRow = sheet.getLastRow() + 1;
+
+  strings.forEach(function(entry) {
+    if (!entry.key || !entry.string || !entry.index) {
+      return; // Skip invalid entries
+    }
+
+    var key = String(entry.key);
+    var string = entry.string;
+    var index = entry.index;
+    var character = entry.character;
+
+    var keyFound = false;
+    for (var i = 1; i < data.length; i++) { // Start from 1 to skip headers
+      if (String(data[i][0]) === key) { // Convert both to strings for comparison
+        sheet.getRange(i + 1, 2).setValue(index); // Update index in column B
+        sheet.getRange(i + 1, 5).setValue(string);
+        keyFound = true;
+        break;
+      }
+    }
+
+    // If the key does not exist, append a new row
+    if (!keyFound) {
+      sheet.getRange(lastRow, 1).setValue(key); // Column A
+      sheet.getRange(lastRow, 2).setValue(index); // Column B
+      sheet.getRange(lastRow, 4).setValue(character);
+      sheet.getRange(lastRow, 5).setValue(string); // Column E
+      lastRow++;
+    }
+  });
+}

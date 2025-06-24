@@ -1,5 +1,8 @@
+using System.Runtime.CompilerServices;
 using MornGlobal;
+using UnityEngine;
 
+[assembly: InternalsVisibleTo("MornSpreadSheet.Editor")]
 namespace MornSpreadSheet
 {
     internal sealed class MornSpreadSheetGlobal : MornGlobalPureBase<MornSpreadSheetGlobal>
@@ -19,6 +22,11 @@ namespace MornSpreadSheet
         internal static void LogError(string message)
         {
             I.LogErrorInternal(message);
+        }
+        
+        internal static void SetDirty(Object target)
+        {
+            I.SetDirtyInternal(target);
         }
     }
 }
